@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MAO Flip Calculator - Blue Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* Custom Tailwind overrides for blue theme */
+.bg-card { background: rgba(15, 32, 59, 0.85); }
+.slider::-webkit-slider-thumb { background: #00aaff; }
+.slider::-moz-range-thumb { background: #00aaff; }
+</style>
+</head>
+<body class="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 min-h-screen text-white">
+
+<div class="max-w-5xl mx-auto p-5">
+  <h1 class="text-center text-3xl font-bold mb-6 drop-shadow-lg">MAO Flip Calculator - Blue Pro</h1>
+
+  <!-- Tabs -->
+  <div class="flex justify-center space-x-2 mb-6">
+    <button id="tabSimpleBtn" class="px-4 py-2 rounded bg-blue-600 font-semibold hover:bg-blue-500">Simple MAO</button>
+    <button id="tabAdvancedBtn" class="px-4 py-2 rounded bg-blue-800 font-semibold hover:bg-blue-600">Advanced MAO</button>
+  </div>
+
+  <!-- Simple Tab -->
+  <div id="tabSimple" class="tab-content bg-card p-6 rounded-lg shadow-lg">
+    <div class="space-y-4">
+      <div>
+        <label>After Repair Value (ARV)</label>
+        <input id="s_arv" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="285000">
+      </div>
+      <div>
+        <label>Rehab Budget</label>
+        <input id="s_rehab" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="45000">
+      </div>
+      <div>
+        <label>MAO %</label>
+        <input id="s_maoPercent" type="range" min="50" max="80" value="70" class="w-full slider" oninput="document.getElementById('s_maoDisplay').innerText=this.value+'%'">
+        <span id="s_maoDisplay">70%</span>
+      </div>
+      <div>
+        <label>Other Costs ($)</label>
+        <input id="s_other" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="5000">
+      </div>
+      <button onclick="calculateSimple()" class="w-full bg-blue-500 hover:bg-blue-400 py-2 rounded font-semibold">Calculate</button>
+    </div>
+
+    <div id="s_results" class="mt-4 bg-blue-800 p-4 rounded text-lg font-semibold"></div>
+
+    <div class="mt-6">
+      <h3 class="text-xl font-bold mb-2">Profit vs Offer</h3>
+      <canvas id="s_profitChart" height="200"></canvas>
+
+      <h3 class="text-xl font-bold mt-6 mb-2">Cost Breakdown</h3>
+      <canvas id="s_costChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Advanced Tab -->
+  <div id="tabAdvanced" class="tab-content hidden bg-card p-6 rounded-lg shadow-lg">
+    <div class="space-y-4">
+      <div>
+        <label>After Repair Value (ARV)</label>
+        <input id="a_arv" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="285000">
+      </div>
+      <div>
+        <label>Rehab Type</label>
+        <select id="a_rehabType" class="w-full p-2 rounded bg-blue-900 text-white" onchange="updateRehabValue()">
+          <option value="light">Light ($25,000)</option>
+          <option value="medium">Medium ($45,000)</option>
+          <option value="heavy">Heavy ($65,000)</option>
+          <option value="gut">Gut ($90,000)</option>
+        </select>
+        <input id="a_rehab" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="25000">
+      </div>
+      <div>
+        <label>Loan %</label>
+        <input id="a_loanPercent" type="range" min="0" max="100" value="0" class="w-full slider" oninput="document.getElementById('a_loanDisplay').innerText=this.value+'%'">
+        <span id="a_loanDisplay">0%</span>
+      </div>
+      <div>
+        <label>Closing Costs ($)</label>
+        <input id="a_closing" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="5000">
+      </div>
+      <div>
+        <label>Holding Costs ($)</label>
+        <input id="a_holding" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="5000">
+      </div>
+      <div>
+        <label>Months Held</label>
+        <input id="a_months" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="6">
+      </div>
+      <div>
+        <label>Interest Rate %</label>
+        <input id="a_interestRate" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="6">
+      </div>
+      <div>
+        <label>Flipper Profit Target ($)</label>
+        <input id="a_profitTarget" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="20000">
+      </div>
+      <div>
+        <label>Other Fees ($)</label>
+        <input id="a_otherFees" type="number" class="w-full p-2 rounded bg-blue-900 text-white" value="2000">
+      </div>
+      <button onclick="calculateAdvanced()" class="w-full bg-blue-500 hover:bg-blue-400 py-2 rounded font-semibold">Calculate</button>
+    </div>
+
+    <div id="a_results" class="mt-4 bg-blue-800 p-4 rounded text-lg font-semibold"></div>
+
+    <div class="mt-6">
+      <h3 class="text-xl font-bold mb-2">Profit vs Offer</h3>
+      <canvas id="a_profitChart" height="200"></canvas>
+
+      <h3 class="text-xl font-bold mt-6 mb-2">Cost Breakdown</h3>
+      <canvas id="a_costChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Tab Switching */
+document.getElementById('tabSimpleBtn').addEventListener('click',()=>{ document.getElementById('tabSimple').classList.remove('hidden'); document.getElementById('tabAdvanced').classList.add('hidden'); });
+document.getElementById('tabAdvancedBtn').addEventListener('click',()=>{ document.getElementById('tabAdvanced').classList.remove('hidden'); document.getElementById('tabSimple').classList.add('hidden'); });
+
+/* Simple MAO Calculation */
+let s_profitChart,s_costChart;
+function calculateSimple(){
+  const arv=parseFloat(document.getElementById("s_arv").value);
+  const rehab=parseFloat(document.getElementById("s_rehab").value);
+  const maoPercent=parseFloat(document.getElementById("s_maoPercent").value)/100;
+  const other=parseFloat(document.getElementById("s_other").value);
+
+  const mao=arv*maoPercent-rehab-other;
+  const initial=mao*0.85;
+  const secondary=mao*0.95;
+
+  document.getElementById("s_results").innerHTML=
+    `<strong>MAO:</strong> $${mao.toLocaleString()}<br>
+     <strong>Initial Offer:</strong> $${initial.toLocaleString()}<br>
+     <strong>Secondary Offer:</strong> $${secondary.toLocaleString()}`;
+
+  const offers=[initial, secondary, mao];
+  const profits=offers.map(o=>arv-rehab-other-o);
+  const ctx=document.getElementById('s_profitChart').getContext('2d');
+  if(s_profitChart) s_profitChart.destroy();
+  s_profitChart=new Chart(ctx,{type:'line',data:{labels:offers.map(x=>`$${x.toLocaleString()}`),datasets:[{label:'Profit',data:profits,borderColor:'#00aaff',backgroundColor:'rgba(0,170,255,0.3)',fill:true,tension:0.3}]},options:{responsive:true}});
+
+  const ctx2=document.getElementById('s_costChart').getContext('2d');
+  if(s_costChart) s_costChart.destroy();
+  s_costChart=new Chart(ctx2,{type:'pie',data:{labels:['Rehab','Other Costs','Profit Potential'],datasets:[{data:[rehab,other,arv-rehab-other-mao],backgroundColor:['#1e90ff','#00aaff','#004080']}]},options:{responsive:true}});
+}
+
+/* Advanced MAO Calculation */
+let a_profitChart,a_costChart;
+function updateRehabValue(){
+  const type=document.getElementById("a_rehabType").value;
+  let val=25000;
+  if(type==='medium') val=45000;
+  else if(type==='heavy') val=65000;
+  else if(type==='gut') val=90000;
+  document.getElementById("a_rehab").value=val;
+}
+
+function calculateAdvanced(){
+  const arv=parseFloat(document.getElementById("a_arv").value);
+  const rehab=parseFloat(document.getElementById("a_rehab").value);
+  const loanPercent=parseFloat(document.getElementById("a_loanPercent").value)/100;
+  const closing=parseFloat(document.getElementById("a_closing").value);
+  const holding=parseFloat(document.getElementById("a_holding").value);
+  const months=parseFloat(document.getElementById("a_months").value);
+  const interestRate=parseFloat(document.getElementById("a_interestRate").value)/100;
+  const profitTarget=parseFloat(document.getElementById("a_profitTarget").value);
+  const otherFees=parseFloat(document.getElementById("a_otherFees").value);
+
+  const totalCosts=rehab+closing+holding+otherFees+(arv*loanPercent*interestRate*months/12);
+  const mao=arv-totalCosts-profitTarget;
+  const firstOffer=mao*0.85;
+  const secondOffer=mao*0.95;
+
+  document.getElementById("a_results").innerHTML=
+    `<strong>MAO:</strong> $${mao.toLocaleString()}<br>
+     <strong>First Offer:</strong> $${firstOffer.toLocaleString()}<br>
+     <strong>Second Offer:</strong> $${secondOffer.toLocaleString()}`;
+
+  const offers=[firstOffer, secondOffer, mao];
+  const profits=offers.map(o=>arv-totalCosts-o);
+  const ctx=document.getElementById('a_profitChart').getContext('2d');
+  if(a_profitChart) a_profitChart.destroy();
+  a_profitChart=new Chart(ctx,{type:'line',data:{labels:offers.map(x=>`$${x.toLocaleString()}`),datasets:[{label:'Profit',data:profits,borderColor:'#00aaff',backgroundColor:'rgba(0,170,255,0.3)',fill:true,tension:0.3}]},options:{responsive:true}});
+
+  const ctx2=document.getElementById('a_costChart').getContext('2d');
+  if(a_costChart) a_costChart.destroy();
+  a_costChart=new Chart(ctx2,{type:'pie',data:{labels:['Rehab','Closing','Holding','Interest','Other'],datasets:[{data:[rehab,closing,holding,arv*loanPercent*interestRate*months/12,otherFees],backgroundColor:['#1e90ff','#00aaff','#004080','#66ccff','#003366']}]},options:{responsive:true}});
+}
+</script>
+</body>
+</html>
